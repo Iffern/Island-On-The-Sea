@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Island on the sea</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+<body>
+
+<div id="container"></div>
+
+<script type="module">
+    import * as THREE from './libs/three.module.js';
+    import { Water } from './objects/Water.js';
+    import { Sky } from './objects/Sky.js';
+    import { GLTFLoader } from './libs/GLTFLoader.js';
+    import { OrbitControls } from "./libs/OrbitControls.js";
+    import {Terrain, generateBlendedMaterial} from "./libs/Terrain.js";
+    import {SkeletonUtils} from "./libs/SkeletonUtils.js";
+
+    let container, stats;
+    let camera, scene, renderer;
+    let controls, water, sun;
+    let loaderGTFL;
+
+    let prevTime = performance.now();
+    const direction = new THREE.Vector3();
+    const vertex = new THREE.Vector3();
+
+    let clock = new THREE.Clock();
+
+    let birdsMixers;
+    let birdMixers2;
+
+    let birdGroup = new THREE.Group();
+    let birdGroup2 = new THREE.Group();
+
+    init();
+    animate();
+
+    function init() {
+
+        container = document.createElement( 'div' );
+        document.body.appendChild( container );
+        //
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.shadowMapEnabled = true;
+        renderer.shadowMapType = THREE.PCFSoftShadowMap;
+        container.appendChild( renderer.domElement );
+        //
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 100, 20000 );
+        camera.position.set( 0, 400, 1000 );
+
+        //
+        controls = new OrbitControls( camera, renderer.domElement );
+        controls.target.set( 0,0,0 );
+        controls.keyPanSpeed = 14.0;
+        controls.update();
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        // Light
+        let ambientLight = new THREE.AmbientLight(0x404040, 0.7);
+        scene.add(ambientLight);
+
+        const directLight1 = new THREE.DirectionalLight( 0x404040, 4);
+        directLight1.position.set( -600, 500, -1000 );
+        directLight1.castShadow = true;
+        directLight1.shadow.camera = new THREE.OrthographicCamera( -2000, 2000, 2000, -2000, 0.5, 4000 );
+        scene.add( directLight1 );
+
+        /*const helper = new THREE.CameraHelper( directLight1.shadow.camera );
+        scene.add( helper );*/
+
+        /*var boxGeometry = new THREE.BoxGeometry(100,100,100);
+        var material = new THREE.MeshPhongMaterial();
+        var box = new THREE.Mesh(boxGeometry, material);
+        box.castShadow = true;
+        scene.add(box);*/
+
+        // Island
+        var sand;
+        var blend;
+        let loader = new THREE.TextureLoader();
+        loader.load('textures/sand.jpg', function(t1) {
+            t1.wrapS = t1.wrapT = THREE.RepeatWrapping;
+            sand = new THREE.Mesh(
+                new THREE.PlaneBufferGeometry(10000, 10000, 64, 64),
+                new THREE.MeshPhongMaterial({map: t1})
+            );
+            sand.position.y = -101;
+            sand.rotation.x = -0.5 * Math.PI;
+            scene.add(sand);
+            loader.load('textures/grass.jpg', function(t2) {
+                loader.load('textures/stone.jpg', function(t3) {
+                    loader.load('textures/snow.jpg', function(t4) {
+                        blend = generateBlendedMaterial([
+                            {texture: t1},
+                            {texture: t2, levels: [-170, -35, 20, 50]},
+                            {texture: t3, levels: [-10, 50, 60, 85]},
+                            {texture: t4, glsl: '1.0 - smoothstep(65.0 + smoothstep(-256.0, 256.0, vPosition.x) * 10.0, 80.0, vPosition.z)'},
+                            {texture: t3, glsl: 'slope > 0.7853981633974483 ? 0.2 : 1.0 - smoothstep(0.47123889803846897, 0.7853981633974483, slope) + 0.2'}, // between 27 and 45 degrees
+                        ], function () {
+                            let islandHeightMap = new Image();
+                            islandHeightMap.src = './textures/island.png';
+                            var xS = 108, yS = 108;
+                            islandHeightMap.onload = function() {
+                                let terrainScene = Terrain({
+                                    easing: Terrain.EaseInWeak,
+                                    frequency: 2.5,
+                                    heightmap: islandHeightMap,
+                                    material: blend,
+                                    maxHeight: 100,
+                                    minHeight: -100,
+                                    steps: 1,
+                                    useBufferGeometry: false,
+                                    xSegments: xS,
+                                    xSize: 2800,
+                                    ySegments: yS,
+                                    ySize: 2800,
+                                });
+                                terrainScene.receiveShadow = true;
+                                terrainScene.castShadow = true;
+                                terrainScene.position.set(0,97,0);
+                                scene.add(terrainScene);
+                        };
+                    });
+                });
+            });
+        });
+        });
+        //
+
+        sun = new THREE.Vector3();
+
+        // Water
+
+        const waterGeometry = new THREE.PlaneBufferGeometry( 10000, 10000 );
+
+        water = new Water(
+            waterGeometry,
+            {
+                textureWidth: 512,
+                textureHeight: 512,
+                waterNormals: new THREE.TextureLoader().load( './textures/waternormals.jpg', function ( texture ) {
+
+                    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+                } ),
+                alpha: 1.0,
+                sunDirection: new THREE.Vector3(),
+                sunColor: 0xffffff,
+                waterColor: 0x001e0f,
+                distortionScale: 3.7,
+                fog: scene.fog !== undefined
+            }
+        );
+
+        water.rotation.x = - Math.PI / 2;
+
+        scene.add( water );
+
+        // Skybox
+
+        const sky = new Sky();
+        sky.scale.setScalar( 10000 );
+        scene.add( sky );
+
+        const skyUniforms = sky.material.uniforms;
+
+        skyUniforms[ 'turbidity' ].value = 10;
+        skyUniforms[ 'rayleigh' ].value = 2;
+        skyUniforms[ 'mieCoefficient' ].value = 0.005;
+        skyUniforms[ 'mieDirectionalG' ].value = 0.8;
+
+        const parameters = {
+            inclination: 0.49,
+            azimuth: 0.205
+        };
+
+        const pmremGenerator = new THREE.PMREMGenerator( renderer );
+
+        function updateSun() {
+
+            const theta = Math.PI * ( parameters.inclination - 0.5 );
+            const phi = 2 * Math.PI * ( parameters.azimuth - 0.5 );
+
+            sun.x = Math.cos( phi );
+            sun.y = Math.sin( phi ) * Math.sin( theta );
+            sun.z = Math.sin( phi ) * Math.cos( theta );
+
+            sky.material.uniforms[ 'sunPosition' ].value.copy( sun );
+            water.material.uniforms[ 'sunDirection' ].value.copy( sun ).normalize();
+
+            scene.environment = pmremGenerator.fromScene( sky ).texture;
+
+        }
+
+        loaderGTFL = new GLTFLoader();
+        loaderGTFL.load("objects/mangotree/tree1.gltf", function ( tree1 ) {
+            tree1.scene.scale.set(0.25,0.25,0.25);
+            tree1.scene.position.set(-550,14,-550);
+            scene.add(tree1.scene);
+            tree1.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+
+            let addTree = function(x,y,z){
+                let newTree = tree1.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+            addTree(-550, 8, 0);
+            addTree(-590,14,-590);
+            addTree(400,55,50);
+            addTree(450,55,100);
+            addTree(100,30,450);
+            addTree(150,40,400);
+            addTree(-400,30,550);
+            addTree(-430,40,610);
+            addTree(-310,20,470);
+            addTree(-700,10,400);
+            addTree(-720,15,430);
+            addTree(-660,15,450);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/oaktree/scene.gltf", function ( tree1 ) {
+            tree1.scene.scale.set(0.1,0.1,0.1);
+            tree1.scene.position.set(-780,15,410);
+            scene.add(tree1.scene);
+            tree1.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addTree = function(x,y,z){
+                let newTree = tree1.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+            addTree(-780,15,100);
+            addTree(-690,14,-670);
+            addTree(300,74,100);
+            addTree(300,94,500);
+            addTree(100,5,800);
+            addTree(-300,50,850);
+            addTree(-600,50,820);
+            addTree(500,5,720);
+            addTree(800,5,400);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/monstera/scene.gltf", function ( tree1 ) {
+            tree1.scene.scale.set(0.07,0.07,0.07);
+            tree1.scene.position.set(100,20,0);
+            tree1.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addTree = function(x,y,z){
+                let newTree = tree1.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+            addTree(150,25,-100);
+            addTree(400,15,-150);
+            addTree(-500,0,-150);
+            addTree(-540,0,0);
+            addTree(-840,10,650);
+            addTree(-940,0,350);
+            addTree(-1000,0,0);
+            addTree(700,10,150);
+            addTree(500,60,300);
+            addTree(100,0,-190);
+            addTree(400,20,-100);
+            addTree(-510,0,-100);
+            addTree(-700,0,200);
+            addTree(-820,10,690);
+            addTree(-920,0,380);
+            addTree(-980,0,40);
+            addTree(730,10,140);
+            addTree(520,90,380);
+            scene.add( tree1.scene);
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/coconut_tree/scene.gltf", function ( tree1 ) {
+            tree1.scene.scale.set(0.1,0.06,0.1);
+            tree1.scene.position.set(50,0,100);
+            scene.add(tree1.scene);
+            tree1.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addTree = function(x,y,z){
+                let newTree = tree1.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+
+            addTree(500,0,-250);
+            addTree(540,0,-270);
+            addTree(700,0,-300);
+            addTree(850,0,150);
+            addTree(800,0,600);
+            addTree(830,0,570);
+            addTree(720,0,700);
+            addTree(450,0,750);
+            addTree(330,0,800);
+            addTree(170,0,820);
+            addTree(10,0,830);
+            addTree(-200,0,950);
+            addTree(-400,0,1050);
+            addTree(-700,0,1000);
+            addTree(-720,0,1050);
+            addTree(-740,0,950);
+            addTree(-680,20,910);
+            addTree(-740,0,600);
+            addTree(-800,0,480);
+            addTree(-600,0,310);
+            addTree(-850,0,0);
+            addTree(-880,0,-100);
+            addTree(-900,0,-300);
+            addTree(-820,0,-500);
+            addTree(-770,0,-550);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/coconut_palm_tree/scene.gltf", function ( object ) {
+            object.scene.scale.set(0.03,0.03,0.03);
+            object.scene.position.set(0,0,200);
+            scene.add(object.scene);
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addTree = function(x,y,z){
+                let newTree = object.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+
+            addTree(50,10,240);
+            addTree(-30,0,380);
+            addTree(-190,0,440);
+            addTree(-300,0,420);
+            addTree(-420,0,450);
+            addTree(-550,0,400);
+            addTree(-530,0,420);
+            addTree(-680,0,290);
+            addTree(-670,0,270);
+            addTree(-650,0,180);
+            addTree(-600,0,70);
+            addTree(-500,0,-10);
+            addTree(-470,0,-140);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/dove/scene.gltf", function ( object ) {
+            birdsMixers =[];
+            object.scene.position.set(0,0,0);
+
+            birdsMixers.push(new THREE.AnimationMixer(object.scene));
+
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+
+            let addBird = function(x,y,z){
+                let newBird = SkeletonUtils.clone(object.scene);
+                birdsMixers.push(new THREE.AnimationMixer(newBird));
+                newBird.position.set(x,y,z);
+                birdGroup.add(newBird);
+            };
+
+            addBird(100,0,40);
+            addBird(150,50,60);
+            addBird(50,-90,20);
+            addBird(150,-20,-50);
+            addBird(100,40,-100);
+            addBird(150,90,-20);
+            addBird(-100,0,-50);
+            addBird(-50,50,50);
+            addBird(-80,90,-100);
+            addBird(20,-60,-20);
+            addBird(180,0,-30);
+            addBird(100,-40,-50);
+            addBird(-100,80,70);
+
+            birdGroup.rotation.y = Math.PI/2;
+            birdGroup.position.set(-4000,100,0);
+
+            for ( let i = 0, l = birdsMixers.length; i < l; i ++ ) {
+                birdsMixers[ i ].clipAction(object.animations[0]).play();
+            }
+            scene.add(birdGroup);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/quetzal/scene.gltf", function ( object ) {
+            birdMixers2 = [];
+            object.scene.position.set(0,0,0);
+
+            birdMixers2.push(new THREE.AnimationMixer(object.scene));
+
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+
+            let addBird = function(x,y,z){
+                let newBird = SkeletonUtils.clone(object.scene);
+                birdMixers2.push(new THREE.AnimationMixer(newBird));
+                newBird.position.set(x,y,z);
+                birdGroup2.add(newBird);
+            };
+
+            addBird(-100,0,-40);
+            addBird(150,50,-60);
+            addBird(-50,90,20);
+            addBird(-150,20,-50);
+            addBird(100,-40,-100);
+            addBird(-150,90,20);
+            addBird(100,0,50);
+            addBird(50,50,-50);
+            addBird(80,90,-100);
+            addBird(-20,60,-20);
+            addBird(-180,0,-30);
+            addBird(-100,-40,50);
+            addBird(100,80,-70);
+
+            birdGroup2.rotation.y = Math.PI/2;
+            birdGroup2.position.set(1000,200,0);
+
+            for ( let i = 0, l = birdMixers2.length; i < l; i ++ ) {
+                birdMixers2[ i ].clipAction(object.animations[0]).play();
+            }
+            scene.add(birdGroup2);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/lighthouse/scene.gltf", function ( object ) {
+            object.scene.scale.set(0.05,0.05,0.05);
+            object.scene.position.set(-400,-13,-700);
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            scene.add( object.scene);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/boat/scene.gltf", function ( object ) {
+            object.scene.scale.set(0.15,0.15,0.15);
+            object.scene.position.set(-100,0,-600);
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            scene.add( object.scene);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        updateSun();
+
+    }
+
+    function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+
+    }
+
+    function animate() {
+
+        requestAnimationFrame( animate );
+        var delta = clock.getDelta();
+        controls.update();
+        if(birdsMixers){
+            for ( let i = 0, l = birdsMixers.length; i < l; i ++ ) {
+                birdsMixers[ i ].update( delta );
+            }
+        }
+        if(birdMixers2){
+            for ( let i = 0, l = birdMixers2.length; i < l; i ++ ) {
+                birdMixers2[ i ].update( delta );
+            }
+        }
+        birdGroup2.position.x+=10;
+        if(birdGroup2.position.x>4000) birdGroup2.position.x=-4000;
+        birdGroup.position.x+=10;
+        if(birdGroup.position.x>4000) birdGroup.position.x=-4000;
+        render();
+    }
+
+    function render() {
+
+        const time = performance.now() * 0.001;
+        water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
+        renderer.render( scene, camera );
+
+    }
+
+</script>
+</body>
+</html>
