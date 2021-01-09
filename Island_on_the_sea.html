@@ -32,6 +32,7 @@
 
     let birdsMixers;
     let birdMixers2;
+    let shibaMixer;
 
     let birdGroup = new THREE.Group();
     let birdGroup2 = new THREE.Group();
@@ -205,7 +206,7 @@
 
         loaderGTFL = new GLTFLoader();
         loaderGTFL.load("objects/mangotree/tree1.gltf", function ( tree1 ) {
-            tree1.scene.scale.set(0.25,0.25,0.25);
+            tree1.scene.scale.set(0.25,0.35,0.25);
             tree1.scene.position.set(-550,14,-550);
             scene.add(tree1.scene);
             tree1.scene.traverse( function( child ) {
@@ -406,6 +407,143 @@
             addTree(-600,0,70);
             addTree(-500,0,-10);
             addTree(-470,0,-140);
+            addTree(-430,0,-260);
+            addTree(-400,0,-390);
+            addTree(-410,0,-370);
+            addTree(-370,0,-410);
+            addTree(-280,0,-590);
+            addTree(-400,0,-700);
+            addTree(-430,0,-680);
+            addTree(-620,0,-660);
+            addTree(-600,0,-690);
+            addTree(-870,0,-600);
+            addTree(-760,0,-420);
+            addTree(-900,0,300);
+            addTree(-920,0,420);
+            addTree(-870,0,590);
+            addTree(-810,0,720);
+            addTree(-830,0,780);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/tree_sakura/scene.gltf", function ( object ) {
+            object.scene.scale.set(40,40,40);
+            object.scene.position.set(600,75,200);
+            scene.add(object.scene);
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addTree = function(x,y,z){
+                let newTree = object.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+
+            addTree(520,50,150);
+            addTree(300,100,450);
+            addTree(100,40,550);
+            addTree(-200,50,550);
+            addTree(-400,40,650);
+            addTree(-450,80,750);
+            addTree(-360,60,780);
+            addTree(-550,60,900);
+            addTree(-740,45,0);
+            addTree(-750,50,-100);
+            addTree(-680,50,-250);
+            addTree(-600,70,-400);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/dog_rose/scene.gltf", function ( object ) {
+            object.scene.scale.set(20,20,20);
+            object.scene.position.set(150,90,490);
+            scene.add(object.scene);
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addFlower = function(x,y,z){
+                let newTree = object.scene.clone();
+                newTree.position.set(x,y,z);
+                scene.add(newTree);
+            };
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/shiba/scene.gltf", function ( object ) {
+            object.scene.position.set(-170,0,-700);
+            object.scene.scale.set(0.2,0.2,0.2);
+
+            shibaMixer = new THREE.AnimationMixer(object.scene);
+
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+
+            shibaMixer.clipAction(object.animations[3]).play();
+            scene.add(object.scene);
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/turtle/scene.gltf", function ( object ) {
+            object.scene.position.set(0,3,50);
+            object.scene.scale.set(20,20,20);
+
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+            let addTurtle = function(x,y,z){
+                let newTurtle = SkeletonUtils.clone(object.scene);
+                newTurtle.position.set(x,y,z);
+                scene.add(newTurtle);
+            };
+
+            addTurtle(-50,5,200);
+
+            scene.add(object.scene);
 
         }, undefined, function ( error ) {
 
@@ -586,6 +724,7 @@
                 birdMixers2[ i ].update( delta );
             }
         }
+        if(shibaMixer) shibaMixer.update(delta);
         birdGroup2.position.x+=10;
         if(birdGroup2.position.x>4000) birdGroup2.position.x=-4000;
         birdGroup.position.x+=10;
