@@ -33,6 +33,8 @@
     let birdsMixers;
     let birdMixers2;
     let shibaMixer;
+    let seagullsMixers;
+    let rabbitsMixers;
 
     let birdGroup = new THREE.Group();
     let birdGroup2 = new THREE.Group();
@@ -71,7 +73,7 @@
         let ambientLight = new THREE.AmbientLight(0x404040, 0.7);
         scene.add(ambientLight);
 
-        const directLight1 = new THREE.DirectionalLight( 0x404040, 4);
+        const directLight1 = new THREE.DirectionalLight( 0x404040, 7);
         directLight1.position.set( -600, 500, -1000 );
         directLight1.castShadow = true;
         directLight1.shadow.camera = new THREE.OrthographicCamera( -2000, 2000, 2000, -2000, 0.5, 4000 );
@@ -206,7 +208,7 @@
 
         loaderGTFL = new GLTFLoader();
         loaderGTFL.load("objects/mangotree/tree1.gltf", function ( tree1 ) {
-            tree1.scene.scale.set(0.25,0.35,0.25);
+            tree1.scene.scale.set(0.35,0.45,0.35);
             tree1.scene.position.set(-550,14,-550);
             scene.add(tree1.scene);
             tree1.scene.traverse( function( child ) {
@@ -245,7 +247,7 @@
         } );
 
         loaderGTFL.load("objects/oaktree/scene.gltf", function ( tree1 ) {
-            tree1.scene.scale.set(0.1,0.1,0.1);
+            tree1.scene.scale.set(0.12,0.12,0.12);
             tree1.scene.position.set(-780,15,410);
             scene.add(tree1.scene);
             tree1.scene.traverse( function( child ) {
@@ -484,10 +486,22 @@
 
             });
             let addFlower = function(x,y,z){
-                let newTree = object.scene.clone();
+                let newTree = SkeletonUtils.clone(object.scene);
                 newTree.position.set(x,y,z);
                 scene.add(newTree);
             };
+            addFlower(350,140,300);
+            addFlower(450,100,350);
+            addFlower(470,100,300);
+            addFlower(50,90,620);
+            addFlower(-100,120,520);
+            addFlower(-80,90,450);
+            addFlower(-500,80,490);
+            addFlower(-550,80,520);
+            addFlower(-530,80,580);
+            addFlower(-700,90,-100);
+            addFlower(-680,90,-120);
+            addFlower(-590,150,-280);
 
         }, undefined, function ( error ) {
 
@@ -535,13 +549,17 @@
                 }
 
             });
-            let addTurtle = function(x,y,z){
+            let addTurtle = function(x,y,z,rotationY=0){
                 let newTurtle = SkeletonUtils.clone(object.scene);
                 newTurtle.position.set(x,y,z);
+                newTurtle.rotation.y = rotationY;
                 scene.add(newTurtle);
             };
 
-            addTurtle(-50,5,200);
+            addTurtle(-50,5,200,Math.PI/2);
+            addTurtle(-400,5,370, -Math.PI/3);
+            addTurtle(-620,5,300, -Math.PI/4);
+            addTurtle(-350,5,-200, Math.PI/6);
 
             scene.add(object.scene);
 
@@ -655,9 +673,93 @@
 
         } );
 
+        loaderGTFL.load("objects/seagulls/scene.gltf", function ( object ) {
+            seagullsMixers = [];
+            object.scene.position.set(0,100,-200);
+            object.scene.scale.set(10,10,10);
+
+            seagullsMixers.push(new THREE.AnimationMixer(object.scene));
+
+            scene.add(object.scene);
+
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+
+            let addBird = function(x,y,z){
+                let newBird = SkeletonUtils.clone(object.scene);
+                seagullsMixers.push(new THREE.AnimationMixer(newBird));
+                newBird.position.set(x,y,z);
+                scene.add(newBird);
+            };
+
+            addBird(-400,100,-100);
+            addBird(-500,100,-900);
+
+            for ( let i = 0, l = seagullsMixers.length; i < l; i ++ ) {
+                seagullsMixers[ i ].clipAction(object.animations[0]).play();
+            }
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
+        loaderGTFL.load("objects/rabbit/scene.gltf", function ( object ) {
+            rabbitsMixers = [];
+            object.scene.position.set(-700,20,430);
+            object.scene.scale.set(0.3,0.3,0.3);
+
+            rabbitsMixers.push(new THREE.AnimationMixer(object.scene));
+
+            scene.add(object.scene);
+
+            object.scene.traverse( function( child ) {
+
+                if ( child.isMesh ) {
+
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+
+                }
+
+            });
+
+            let addRabbit = function(x,y,z){
+                let newRabbit = SkeletonUtils.clone(object.scene);
+                rabbitsMixers.push(new THREE.AnimationMixer(newRabbit));
+                newRabbit.position.set(x,y,z);
+                scene.add(newRabbit);
+            };
+
+            addRabbit(-730,20,390);
+            addRabbit(-650,20,380);
+            addRabbit(-570,30,470);
+            addRabbit(250,100,500);
+            addRabbit(200,70,520);
+            addRabbit(170,80,450);
+
+            for ( let i = 0, l = rabbitsMixers.length; i < l; i ++ ) {
+                rabbitsMixers[ i ].clipAction(object.animations[i%4]).play();
+            }
+
+        }, undefined, function ( error ) {
+
+            console.error( error );
+
+        } );
+
         loaderGTFL.load("objects/lighthouse/scene.gltf", function ( object ) {
-            object.scene.scale.set(0.05,0.05,0.05);
-            object.scene.position.set(-400,-13,-700);
+            object.scene.scale.set(0.07,0.07,0.07);
+            object.scene.position.set(-490,-15,-730);
             object.scene.traverse( function( child ) {
 
                 if ( child.isMesh ) {
@@ -722,6 +824,18 @@
         if(birdMixers2){
             for ( let i = 0, l = birdMixers2.length; i < l; i ++ ) {
                 birdMixers2[ i ].update( delta );
+            }
+        }
+
+        if(seagullsMixers){
+            for ( let i = 0, l = seagullsMixers.length; i < l; i ++ ) {
+                seagullsMixers[ i ].update( delta );
+            }
+        }
+
+        if(rabbitsMixers){
+            for ( let i = 0, l = rabbitsMixers.length; i < l; i ++ ) {
+                rabbitsMixers[ i ].update( delta );
             }
         }
         if(shibaMixer) shibaMixer.update(delta);
