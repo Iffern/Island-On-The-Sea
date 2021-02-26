@@ -4,11 +4,19 @@ In the project the island on the sea was model. On the island one can see the an
 
 If you want to launch the project, copy the repository and open Island_on_the_sea.html in the browser (it can take a while to launch due to large amount of objects).
 
-<img align="center" width="1000" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_1.png">
+<p align="center">
+<img width="800" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_1.png">
+</p>
 
-<img align="center" width="1000" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_2.png">
+<p align="center">
+<img width="800" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_2.png">
+  </p>
 
-<img align="center" width="1000" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_3.png">
+<p align="center">
+<img width="800" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_3.png">
+  </p>
 
-<img align="center" width="1000" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_4.png">
+<p align="center">
+<img width="800" src="https://github.com/Iffern/Island-On-The-Sea/blob/main/textures/img_4.png">
+  </p>
 
